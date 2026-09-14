@@ -15,6 +15,10 @@
 | 6c | Device deployment & integration testing | ✅ Complete |
 | 6d | `follow-user` camera pan/tilt tracking, look-around search, 2 ft distance-keeping | ✅ Complete |
 | 7 | Autonomy telemetry to ArcadeDB | ✅ Complete — MQTT device→central transport (autonomon Phase 7 / nomothetic Phase 27) |
+| 8 | Odometry & IMU raw inputs → `PoseEstimator` | 🔜 Planned — ADR-008 D6 (cross-repo: nomopractic Phase 16, nomothetic Phase 30) |
+| 9 | Shared world state + skill arbiter; `follow_operator` subsumed by `avoid` / `cliff_stop` | 🔜 Planned — ADR-008 D1/D2 |
+| 10 | UWB following (`UwbPerception`) | 🔜 Planned — ADR-008 D4 |
+| 11 | Teach-and-repeat `navigate_to` / `retrace` | 🔜 Planned — ADR-008 D5 |
 
 > **Lean core (ADR-006).** Runtime layer hot-swap (`Pipeline.swap_layer` /
 > `LayerSlot.swap`) and competing-planner fan-in arbitration (`MergeStrategy.ARBITRATE`,
@@ -355,3 +359,120 @@ them.
 - **nomographic:** central migration `V4__add_autonomy_schema.sql` —
   `AutonomyRun` + `AutonomyEvent` vertices, `PerformedBy` (run→Vehicle) and
   `PartOf` (event→run) edges.
+
+---
+
+## Planned Phases (ADR-008 — navigation strategy)
+
+> Direction set by ADR-008 (2026-09-13): composable skills over a shared world
+> state, selected by a priority arbiter; ROS-shaped internal contracts, no ROS.
+> See `REVIEW-2026-09-13.md` (workspace root) for the review that motivated it.
+
+### Phase 8 — Odometry & IMU Raw Inputs → `PoseEstimator`
+
+**Goal:** Give the brain a pose. Everything downstream (subsumption-safe
+following, retrace, any future navigation) depends on knowing where the robot
+is and which way it faces.
+
+**Cross-repo dependency:** nomopractic Phase 16 (encoder + IMU drivers,
+`read_odometry` / `read_imu` IPC) and nomothetic Phase 30
+(`GET /api/sensor/odometry`, `GET /api/sensor/imu` raw endpoints).
+
+**Deliverables:**
+- [ ] `Perceptron.odometry` → `GET /api/sensor/odometry`; emits
+      `{"left_ticks", "right_ticks", "dt_s"}` (or per-wheel distance) at 20 Hz
+- [ ] `Perceptron.imu` → `GET /api/sensor/imu`; emits gyro/accel (and heading
+      when the IMU fuses it) at 20 Hz
+- [ ] `world_model/pose.py` — `PoseEstimator`: dead-reckoning integration of
+      encoder distance + gyro yaw (complementary filter); publishes
+      `pose` (x, y, θ in the odom frame) and `twist` (v, ω)
+- [ ] Messages: `WorldStateUpdate.state["pose"]` / `["twist"]` documented in
+      `architecture.md`
+- [ ] Tests: straight-line, in-place turn, and arc integration against a
+      synthetic encoder/gyro trace; drift bound documented
+
+**Exit criteria:** on the PicarX, a 2 m out-and-back drive reports return
+position within 10 % of distance travelled; `make check` clean.
+
+---
+
+### Phase 9 — Shared World State + Skill Arbiter (safe following)
+
+**Goal:** One always-running pipeline. Safety behaviours subsume task
+behaviours so following can never drive into an obstacle or off an edge.
+Closes the highest-priority safety gap from the 2026-09-13 review.
+
+**Deliverables:**
+- [ ] `world_model/state.py` — `WorldState` (pose, twist, `obstacle_ahead`,
+      `cliff_detected`, occupancy snapshot, target track, battery, timestamps)
+      and a single `WorldModel` that hosts *estimators* (the existing obstacle,
+      occupancy, and target models refactored to update fields of the shared
+      state)
+- [ ] `planning/skills/` — `Skill` protocol (`evaluate(state, now) -> Motion |
+      None`), `Motion` (v, ω, pan, tilt, priority); built-in skills `estop`,
+      `cliff_stop`, `avoid`, `follow_operator`, `hold`, `wander`, `idle`
+- [ ] `planning/arbiter.py` — `SkillArbiter(PlannerBase)`: fixed priority
+      order, per-skill `hold_s` commit windows, emits an `ActionPlan` only on
+      change (keeps today's debounce and idle-tick loop)
+- [ ] `action/vehicle.py` gains a `cmd_vel` method (`v_mps`, `omega_radps`,
+      `ttl_ms`) beside `drive`/`steer`; kinematics move to nomopractic (ADR-008
+      D3). Until nomopractic ships `cmd_vel`, a shim converts (v, ω) → PicarX
+      speed/steer in the action layer
+- [ ] Routines become skill sets: `explore` = `{wander}`, `follow-user` =
+      `{follow_operator}`, `patrol` = `{wander}` + occupancy caution rule.
+      Registry, manifest, and catalogue file unchanged (ADR-005)
+- [ ] Delete `planning/pursuit.py` (superseded, no consumer)
+- [ ] Tests: arbitration order (cliff beats avoid beats follow), hold windows,
+      subprocess integration for all three routines through the arbiter
+
+**Exit criteria:** `follow-user` on the PicarX stops for a box placed between
+it and the operator and backs off a table edge; all existing routine tests
+pass through the new arbiter; `make check` clean.
+
+---
+
+### Phase 10 — UWB Following (`UwbPerception`)
+
+**Goal:** Make following robust and fast enough for a cart by ranging to a
+worn tag instead of steering on a 0.8 Hz detector.
+
+**Cross-repo dependency:** nomopractic Phase 16.3 (UWB module UART driver,
+`read_uwb`), nomothetic Phase 30 (`GET /api/sensor/uwb`).
+
+**Deliverables:**
+- [ ] `Perceptron.uwb` → `GET /api/sensor/uwb`; emits `{"range_cm",
+      "bearing_deg" | null, "quality"}` at ≥10 Hz
+- [ ] `TargetEstimator` prefers UWB range/bearing; vision refines bearing and
+      confirms identity; search uses the last UWB bearing
+- [ ] `follow_operator` tuned on UWB (standoff, deadband, loss timeout)
+- [ ] Tests with a synthetic tag trace (approach, lateral move, dropout)
+
+**Exit criteria:** following holds a 60 cm standoff while the operator walks a
+figure-eight outdoors at dusk, with the camera covered.
+
+---
+
+### Phase 11 — Teach-and-Repeat `navigate_to` / `retrace`
+
+**Goal:** "Point-to-point on command" for the hauling loop without a map or
+GPS: retrace a taught route with visual drift correction (QVPR-style
+teach-and-repeat, monocular + odometry).
+
+**Deliverables:**
+- [ ] `world_model/trail.py` — records odometry poses plus low-resolution
+      camera keyframes every `keyframe_m` metres while any skill drives
+- [ ] `retrace` skill — replays the trail in reverse: pure-pursuit on trail
+      poses, lateral/heading correction from keyframe correlation matching;
+      `avoid`/`cliff_stop` remain active above it
+- [ ] `navigate_to(place)` — named places are saved trail endpoints; the
+      skill selects the trail and direction
+- [ ] Tests: synthetic trail replay with injected odometry drift corrected by
+      keyframe matches
+
+**Exit criteria:** after being followed 30 m outdoors, "return" brings the
+robot within 1 m of the start with no operator input.
+
+**Deferred beyond Phase 11 (needs a job that requires it):** metric map and
+global planner (Nav2 or equivalent); navigation foundation models as an
+alternative `navigate_to` implementation; ArduPilot Rover as the cart's
+low-level autopilot (decided with the drivetrain, ADR-008 D3).
