@@ -246,11 +246,37 @@ def test_follow_user_detector_param_selects_opencv_hog() -> None:
     assert isinstance(_follow_user_detector({"detector": "opencv-hog"}), OpenCvHogDetector)
 
 
-def test_follow_user_detector_param_selects_opencv_dnn() -> None:
-    det = _follow_user_detector({"detector": "opencv-dnn", "model_path": "m", "model_config": "c"})
+def test_follow_user_detector_param_selects_opencv_dnn(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("NOMON_MODEL_DIR", str(tmp_path))
+    m, c = str(tmp_path / "m.caffemodel"), str(tmp_path / "c.prototxt")
+    det = _follow_user_detector({"detector": "opencv-dnn", "model_path": m, "model_config": c})
     assert isinstance(det, OpenCvDnnDetector)
-    assert det._model_path == "m"
-    assert det._config_path == "c"
+    assert det._model_path == m
+    assert det._config_path == c
+
+
+def test_follow_user_model_path_param_confined_to_model_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A model_path param outside NOMON_MODEL_DIR is refused (review S-10)."""
+    monkeypatch.setenv("NOMON_MODEL_DIR", str(tmp_path / "models"))
+    with pytest.raises(ValueError, match="model_path"):
+        _follow_user_detector({"detector": "opencv-dnn", "model_path": "/etc/passwd"})
+    with pytest.raises(ValueError, match="model_path"):
+        _follow_user_detector(
+            {"detector": "yolo-onnx", "model_path": str(tmp_path / "models" / ".." / "x.onnx")}
+        )
+    with pytest.raises(ValueError, match="absolute"):
+        _follow_user_detector({"detector": "yolo-onnx", "model_path": "relative.onnx"})
+
+
+def test_follow_user_model_path_env_is_trusted(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The deploy-time env path is operator config and is not confined."""
+    monkeypatch.setenv("NOMON_VISION_MODEL_PATH", "/opt/anywhere/yolov8n.onnx")
+    det = _follow_user_detector({"detector": "yolo-onnx"})
+    assert det._model_path == "/opt/anywhere/yolov8n.onnx"  # type: ignore[attr-defined]
 
 
 def test_follow_user_detector_env_selects_opencv_hog(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -330,7 +356,19 @@ def test_patrol_params_map_to_world_model() -> None:
     assert wm._decay_s == 6.0
 
 
-def test_patrol_custom_rules_path_overrides_bundled(tmp_path: Path) -> None:
+def test_patrol_rules_path_param_confined(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """rules_path outside the bundled dir / NOMON_RULES_DIR is refused (review S-10)."""
+    monkeypatch.delenv("NOMON_RULES_DIR", raising=False)
+    table = tmp_path / "custom.toml"
+    table.write_text('[[rules]]\nname = "go"\nwhen = {}\nactions = []\n')
+    with pytest.raises(ValueError, match="rules_path"):
+        get_routine("patrol")(_client(), "nomon-1", {"rules_path": str(table)})
+
+
+def test_patrol_custom_rules_path_overrides_bundled(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("NOMON_RULES_DIR", str(tmp_path))
     table = tmp_path / "custom.toml"
     table.write_text(
         '[[rules]]\nname = "go"\nwhen = {}\n'

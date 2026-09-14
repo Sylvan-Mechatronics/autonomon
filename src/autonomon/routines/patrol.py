@@ -31,6 +31,7 @@ from autonomon.fan_in import FanInSlot
 from autonomon.perception.perceptron import Perceptron
 from autonomon.pipeline import Pipeline
 from autonomon.planning.rule import RulePlanner, bundled_rules_path
+from autonomon.routines.paths import confine_param_path, rules_dirs
 from autonomon.world_model.occupancy import OccupancyWorldModel
 
 # Routine-level world-model defaults. patrol senses a wider "caution" range than
@@ -135,7 +136,14 @@ def build_patrol(
         cliff_threshold=params.get("cliff_threshold", _DEFAULT_CLIFF_THRESHOLD),
     )
 
-    rules_path = params.get("rules_path") or bundled_rules_path("patrol.toml")
+    bundled = bundled_rules_path("patrol.toml")
+    requested = params.get("rules_path")
+    if requested:
+        # A caller-supplied table is confined to the bundled rules dir or
+        # NOMON_RULES_DIR (review S-10); the planner would otherwise parse any file.
+        rules_path = confine_param_path(str(requested), rules_dirs(bundled.parent), "rules_path")
+    else:
+        rules_path = str(bundled)
     planner = RulePlanner.from_toml(rules_path, device_id)
 
     return Pipeline(
