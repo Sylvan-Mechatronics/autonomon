@@ -178,7 +178,7 @@ if [[ -n "${PI_HOST}" ]]; then
         SSH_OPTS+=(-i "${NOMON_SSH_KEY}")
     fi
     echo "==> Deploying autonomon${VERSION:+ ${VERSION}} → ${PI_HOST}"
-    RUN_CMD=(ssh "${SSH_OPTS[@]}" "${PI_HOST}" "NOMON_SKIP_TESTS=${SKIP_TESTS} NOMON_SUDO_PASS=${_NOMON_SUDO_PASS_QUOTED} NOMON_ROUTINE_CATALOG_PATH=${_NOMON_ROUTINE_CATALOG_PATH_QUOTED} NOMON_VISION_DETECTOR=${_NOMON_VISION_DETECTOR_QUOTED} NOMON_VISION_MODEL_PATH=${_NOMON_VISION_MODEL_PATH_QUOTED} NOMON_VISION_MODEL_CONFIG=${_NOMON_VISION_MODEL_CONFIG_QUOTED} NOMON_LOG_LEVEL=${_NOMON_LOG_LEVEL_QUOTED} NOMON_DEPLOY_VERSION=${_VERSION_QUOTED} NOMON_DEPLOY_LOCAL=${_DEPLOY_LOCAL_QUOTED} NOMON_DEPLOY_REMOTE_DIR=${_REMOTE_DIR_QUOTED} bash -ls")
+    RUN_CMD=(ssh "${SSH_OPTS[@]}" "${PI_HOST}" "NOMON_SKIP_TESTS=${SKIP_TESTS} NOMON_ROUTINE_CATALOG_PATH=${_NOMON_ROUTINE_CATALOG_PATH_QUOTED} NOMON_VISION_DETECTOR=${_NOMON_VISION_DETECTOR_QUOTED} NOMON_VISION_MODEL_PATH=${_NOMON_VISION_MODEL_PATH_QUOTED} NOMON_VISION_MODEL_CONFIG=${_NOMON_VISION_MODEL_CONFIG_QUOTED} NOMON_LOG_LEVEL=${_NOMON_LOG_LEVEL_QUOTED} NOMON_DEPLOY_VERSION=${_VERSION_QUOTED} NOMON_DEPLOY_LOCAL=${_DEPLOY_LOCAL_QUOTED} NOMON_DEPLOY_REMOTE_DIR=${_REMOTE_DIR_QUOTED} bash -ls")
 else
     echo "==> Deploying autonomon${VERSION:+ ${VERSION}} locally"
     export NOMON_SKIP_TESTS="${SKIP_TESTS}"
@@ -227,7 +227,11 @@ fi
 # ── Remote deploy script ───────────────────────────────────────────────────────
 # All steps below run on the Pi (remote or local) via a single shell session.
 
-"${RUN_CMD[@]}" << 'END_REMOTE'
+# The sudo password is prepended to the remote script on stdin instead of
+# being placed in the ssh argv, so it never appears in `ps` (review S-9).
+_remote_script() {
+    printf 'NOMON_SUDO_PASS=%s\n' "${_NOMON_SUDO_PASS_QUOTED}"
+    cat <<'END_REMOTE'
 set -euo pipefail
 
 if [[ -n "${NOMON_SUDO_PASS:-}" ]]; then
@@ -611,3 +615,5 @@ if [[ "${DEPLOY_LOCAL}" != "true" ]]; then
     done
 fi
 END_REMOTE
+}
+_remote_script | "${RUN_CMD[@]}"

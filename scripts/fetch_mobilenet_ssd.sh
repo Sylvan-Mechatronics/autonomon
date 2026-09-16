@@ -14,6 +14,9 @@
 # NOMON_VISION_MODEL_CONFIG (prototxt), or the model_path / model_config params.
 #
 # Override the source URLs with NOMON_VISION_DNN_PROTO_URL / NOMON_VISION_DNN_MODEL_URL.
+# Downloads are verified against pinned SHA-256 sums (review finding S-19); when
+# you override a URL, also set NOMON_VISION_DNN_PROTO_SHA256 /
+# NOMON_VISION_DNN_MODEL_SHA256 for the file you expect.
 #
 # Usage:
 #   scripts/fetch_mobilenet_ssd.sh
@@ -26,6 +29,22 @@ MODEL_PATH="${MODEL_PATH:-$MODEL_DIR/MobileNetSSD_deploy.caffemodel}"
 PROTO_URL="${NOMON_VISION_DNN_PROTO_URL:-https://raw.githubusercontent.com/djmv/MobilNet_SSD_opencv/master/MobileNetSSD_deploy.prototxt}"
 MODEL_URL="${NOMON_VISION_DNN_MODEL_URL:-https://github.com/djmv/MobilNet_SSD_opencv/raw/master/MobileNetSSD_deploy.caffemodel}"
 
+# Pinned digests of the upstream files (computed 2026-09-13).
+PROTO_SHA256="${NOMON_VISION_DNN_PROTO_SHA256:-e781559c4f5beaec2a486ccd952af5b6fa408e9498761bf5f4fb80b4e9f0d25e}"
+MODEL_SHA256="${NOMON_VISION_DNN_MODEL_SHA256:-761c86fbae3d8361dd454f7c740a964f62975ed32f4324b8b85994edec30f6af}"
+
+verify_sha256() {
+  local path="$1" expected="$2" actual
+  actual="$(sha256sum "$path" | awk '{print $1}')"
+  if [ "$actual" != "$expected" ]; then
+    echo "Error: SHA-256 mismatch for $path" >&2
+    echo "  expected $expected" >&2
+    echo "  actual   $actual" >&2
+    rm -f "$path"
+    exit 1
+  fi
+}
+
 mkdir -p "$MODEL_DIR"
 
 if [ -f "$PROTO_PATH" ] && [ -f "$MODEL_PATH" ]; then
@@ -35,16 +54,12 @@ fi
 
 echo "Downloading MobileNet-SSD prototxt -> $PROTO_PATH"
 curl -fSL "$PROTO_URL" -o "$PROTO_PATH"
+verify_sha256 "$PROTO_PATH" "$PROTO_SHA256"
 
 echo "Downloading MobileNet-SSD caffemodel (~23 MB) -> $MODEL_PATH"
 curl -fSL "$MODEL_URL" -o "$MODEL_PATH"
 
-# Sanity check: the caffemodel must be a binary blob, not an HTML error page.
-if head -c 64 "$MODEL_PATH" | grep -qi "<!DOCTYPE\|<html"; then
-  echo "Error: downloaded caffemodel looks like HTML (bad URL?). Removing." >&2
-  rm -f "$MODEL_PATH"
-  exit 1
-fi
+verify_sha256 "$MODEL_PATH" "$MODEL_SHA256"
 
 echo "Done. Set:"
 echo "  NOMON_VISION_MODEL_PATH=$MODEL_PATH"

@@ -28,6 +28,15 @@ fi
 if [ -n "${NOMON_VISION_MODEL_URL:-}" ]; then
   echo "Downloading model from \$NOMON_VISION_MODEL_URL -> $MODEL_PATH"
   curl -fSL "$NOMON_VISION_MODEL_URL" -o "$MODEL_PATH"
+  # Optional integrity pin for a downloaded model (review finding S-19).
+  if [ -n "${NOMON_VISION_MODEL_SHA256:-}" ]; then
+    actual="$(sha256sum "$MODEL_PATH" | awk '{print $1}')"
+    if [ "$actual" != "$NOMON_VISION_MODEL_SHA256" ]; then
+      echo "Error: SHA-256 mismatch for $MODEL_PATH (expected $NOMON_VISION_MODEL_SHA256, got $actual)" >&2
+      rm -f "$MODEL_PATH"
+      exit 1
+    fi
+  fi
   echo "Done. Set NOMON_VISION_MODEL_PATH=$MODEL_PATH"
   exit 0
 fi

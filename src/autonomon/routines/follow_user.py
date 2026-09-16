@@ -63,6 +63,7 @@ from autonomon.perception.perceptron import Perceptron
 from autonomon.perception.vision import VisionPerception
 from autonomon.pipeline import Pipeline
 from autonomon.planning.follow import FollowPlanner
+from autonomon.routines.paths import confine_param_path, model_dirs
 from autonomon.world_model.target import TargetWorldModel
 
 _DEFAULT_TARGET_DISTANCE_CM = 60.0  # ≈ 2 ft
@@ -304,6 +305,15 @@ FOLLOW_USER_PARAMS_SCHEMA: dict[str, dict[str, Any]] = {
 }
 
 
+def _path_param(params: dict[str, Any], key: str, env: str) -> str:
+    """Resolve a model file path: a *param* is confined to ``NOMON_MODEL_DIR`` (S-10);
+    the deploy-time env value is operator config and trusted as-is."""
+    value = params.get(key)
+    if value:
+        return confine_param_path(str(value), model_dirs(), key)
+    return os.environ.get(env, "")
+
+
 def _build_detector(params: dict[str, Any]) -> Detector:
     """Choose the detector backend by kind, honouring the fake-detections dev hook.
 
@@ -322,12 +332,12 @@ def _build_detector(params: dict[str, Any]) -> Detector:
 
     kind = (params.get("detector") or os.environ.get(_ENV_DETECTOR) or _DEFAULT_DETECTOR).strip()
     if kind == "yolo-onnx":
-        model_path = params.get("model_path") or os.environ.get(_ENV_MODEL_PATH, "")
-        return YoloOnnxDetector(model_path)
+        return YoloOnnxDetector(_path_param(params, "model_path", _ENV_MODEL_PATH))
     if kind == "opencv-dnn":
-        model_path = params.get("model_path") or os.environ.get(_ENV_MODEL_PATH, "")
-        config_path = params.get("model_config") or os.environ.get(_ENV_MODEL_CONFIG, "")
-        return OpenCvDnnDetector(model_path, config_path)
+        return OpenCvDnnDetector(
+            _path_param(params, "model_path", _ENV_MODEL_PATH),
+            _path_param(params, "model_config", _ENV_MODEL_CONFIG),
+        )
     if kind == "opencv-hog":
         return OpenCvHogDetector()
     if kind == "fake":
