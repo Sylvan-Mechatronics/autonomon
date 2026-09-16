@@ -56,7 +56,9 @@ vision = [
 # download — handy for first bring-up before the YOLO model is on-device. Headless
 # build (no GUI/Qt deps); aarch64 wheels exist. Lazy-imported like the YOLO stack.
 vision-opencv = [
-    "opencv-python-headless>=4.8",
+    # <5: OpenCV 5 moved HOGDescriptor out of the main module (to contrib),
+    # and the HOG person detector depends on cv2.HOGDescriptor.
+    "opencv-python-headless>=4.8,<5",
     "numpy>=1.24",
 ]
 
