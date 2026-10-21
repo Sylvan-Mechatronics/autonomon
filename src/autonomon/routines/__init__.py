@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from autonomon._version import __version__
 from autonomon.routines.explore import EXPLORE_PARAMS_SCHEMA, build_explore
 from autonomon.routines.follow_user import FOLLOW_USER_PARAMS_SCHEMA, build_follow_user
 from autonomon.routines.patrol import PATROL_PARAMS_SCHEMA, build_patrol
@@ -50,7 +51,7 @@ def _union_params_schema() -> dict[str, dict[str, Any]]:
 # nomothetic never imports autonomon.
 nomon_manifest: dict[str, object] = {
     "name": "autonomon",
-    "version": "0.5.0",
+    "version": __version__,
     "routines": available_routines(),
     "params_schema": _union_params_schema(),
 }
