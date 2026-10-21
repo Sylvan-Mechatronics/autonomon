@@ -25,7 +25,7 @@ make check           # ruff + black + mypy + pytest
 make test            # pytest only
 ```
 
-Python ≥ 3.9; dev/CI is x86_64 Linux with all hardware mocked (no Pi needed). On
+Python ≥ 3.10; dev/CI is x86_64 Linux with all hardware mocked (no Pi needed). On
 the Windows/WSL mount, run these via `wsl.exe` (the toolchain lives in WSL).
 
 ## Run a routine locally (against a device)
