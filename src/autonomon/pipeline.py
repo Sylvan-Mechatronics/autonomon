@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Union
 
 from autonomon.action.base import ActionBase
 from autonomon.fan_in import FanInSlot
@@ -22,11 +21,11 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_QUEUE_SIZE = 32
 
-_PerceptionArg = Union[PerceptionBase, FanInSlot]
-_WorldModelArg = Union[WorldModelBase, FanInSlot]
-_PlannerArg = Union[PlannerBase, FanInSlot]
-_ActionArg = Union[ActionBase, FanInSlot]
-_AnySlot = Union[LayerSlot, FanInSlot]
+_PerceptionArg = PerceptionBase | FanInSlot
+_WorldModelArg = WorldModelBase | FanInSlot
+_PlannerArg = PlannerBase | FanInSlot
+_ActionArg = ActionBase | FanInSlot
+_AnySlot = LayerSlot | FanInSlot
 
 
 def _to_slot(name: str, arg: AnyLayer | FanInSlot) -> _AnySlot:

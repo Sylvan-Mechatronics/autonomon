@@ -7,7 +7,7 @@ name = "autonomon"
 version = "0.5.4"
 description = "Four-layer autonomous capabilities framework for the nomon fleet."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = {text = "Apache-2.0"}
 authors = [
     {name = "Perceptua", email = "perceptua.blue@gmail.com"}
@@ -19,7 +19,6 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Home Automation",
@@ -27,9 +26,6 @@ classifiers = [
 dependencies = [
     "httpx>=0.25",
     "cryptography>=41.0",
-    # TOML rule tables for RulePlanner. tomllib is stdlib on 3.11+; tomli is the
-    # pure-Python backport for 3.10. Tiny and dependency-free either way.
-    "tomli>=2.0; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]
@@ -77,11 +73,11 @@ where = ["src"]
 
 [tool.black]
 line-length = 100
-target-version = ["py39", "py310", "py311", "py312"]
+target-version = ["py311", "py312"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "C4", "B", "UP"]

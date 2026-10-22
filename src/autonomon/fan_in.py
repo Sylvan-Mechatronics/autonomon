@@ -83,7 +83,7 @@ class FanInSlot:
             if not task.done():
                 try:
                     await asyncio.wait_for(asyncio.shield(task), timeout=timeout)
-                except (asyncio.TimeoutError, asyncio.CancelledError, Exception):
+                except (TimeoutError, asyncio.CancelledError, Exception):
                     task.cancel()
                     try:
                         await task

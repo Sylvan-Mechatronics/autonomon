@@ -14,7 +14,6 @@ from __future__ import annotations
 import asyncio
 import enum
 import logging
-from typing import Union
 
 from autonomon.action.base import ActionBase
 from autonomon.perception.base import PerceptionBase
@@ -23,7 +22,7 @@ from autonomon.world_model.base import WorldModelBase
 
 logger = logging.getLogger(__name__)
 
-AnyLayer = Union[PerceptionBase, WorldModelBase, PlannerBase, ActionBase]
+AnyLayer = PerceptionBase | WorldModelBase | PlannerBase | ActionBase
 
 
 class SlotState(enum.Enum):
@@ -107,7 +106,7 @@ class LayerSlot:
         if self._task and not self._task.done():
             try:
                 await asyncio.wait_for(asyncio.shield(self._task), timeout=timeout)
-            except (asyncio.TimeoutError, asyncio.CancelledError, Exception):
+            except (TimeoutError, asyncio.CancelledError, Exception):
                 self._task.cancel()
                 try:
                     await self._task

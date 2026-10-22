@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 
@@ -115,7 +115,7 @@ class VisionPerception(PerceptionBase):
             frame = resp.content
             # Detection can be CPU-heavy; keep the event loop responsive.
             detections = await asyncio.to_thread(self._detector.detect, frame)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("vision frame poll timed out after %.1f s", self._timeout_s)
             return
         except httpx.RequestError as exc:
@@ -178,7 +178,7 @@ class VisionPerception(PerceptionBase):
                 "confidence": target.confidence,
             }
         return PerceptionEvent(
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             device_id=self._device_id,
             sensor_type="vision",
             data=data,
@@ -187,7 +187,7 @@ class VisionPerception(PerceptionBase):
     async def _interruptible_sleep(self, seconds: float) -> None:
         try:
             await asyncio.wait_for(self._stop.wait(), timeout=seconds)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
 
     async def stop(self) -> None:

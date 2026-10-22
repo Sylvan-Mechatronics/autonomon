@@ -37,18 +37,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import sys
-from datetime import datetime, timezone
+import tomllib
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from autonomon.messages import ActionPlan, WorldStateUpdate
 from autonomon.planning.base import PlannerBase
-
-if sys.version_info >= (3, 11):  # pragma: no cover - exercised on the runtime in use
-    import tomllib
-else:  # pragma: no cover - 3.9/3.10 backport path
-    import tomli as tomllib
 
 logger = logging.getLogger(__name__)
 
@@ -263,7 +258,7 @@ class RulePlanner(PlannerBase):
         while not self._stop.is_set():
             try:
                 update = await asyncio.wait_for(queue_in.get(), timeout=_QUEUE_GET_TIMEOUT_S)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 update = None
             if update is not None:
                 self._last_state = update.state
@@ -312,7 +307,7 @@ class RulePlanner(PlannerBase):
     def _build_plan(self, name: str, actions: list[dict[str, Any]]) -> ActionPlan:
         self._plan_counter += 1
         return ActionPlan(
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             device_id=self._device_id,
             plan_id=f"{name}-{self._plan_counter}",
             actions=list(actions),

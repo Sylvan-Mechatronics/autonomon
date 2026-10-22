@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from autonomon.messages import ActionPlan, WorldStateUpdate
@@ -87,7 +87,7 @@ class PursuitPlanner(PlannerBase):
         while not self._stop.is_set():
             try:
                 update = await asyncio.wait_for(queue_in.get(), timeout=_QUEUE_GET_TIMEOUT_S)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 continue
             self._last_state = update.state
             await self._tick(queue_out)
@@ -138,7 +138,7 @@ class PursuitPlanner(PlannerBase):
     def _build_plan(self, kind: str, actions: list[dict[str, Any]]) -> ActionPlan:
         self._plan_counter += 1
         return ActionPlan(
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             device_id=self._device_id,
             plan_id=f"{kind}-{self._plan_counter}",
             actions=actions,
