@@ -64,3 +64,16 @@ def test_main_falls_back_to_env_path(tmp_path, monkeypatch):
     monkeypatch.setenv("NOMON_ROUTINE_CATALOG_PATH", str(target))
     assert main([]) == 0
     assert target.exists()
+
+
+def test_versions_come_from_package_metadata():
+    # The version was once hardcoded and drifted (0.5.0 while v0.5.4 shipped),
+    # so deploy output and the published catalogue reported the wrong release.
+    import importlib.metadata
+
+    import autonomon
+
+    installed = importlib.metadata.version("autonomon")
+    assert autonomon.__version__ == installed
+    assert nomon_manifest["version"] == installed
+    assert build_catalog()["version"] == installed

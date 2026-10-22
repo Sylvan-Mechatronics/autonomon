@@ -1,5 +1,6 @@
 """autonomon — four-layer autonomous capabilities framework for the nomon fleet."""
 
+from autonomon._version import __version__ as __version__
 from autonomon.action.base import ActionBase
 from autonomon.action.vehicle import VehicleAction
 from autonomon.fan_in import FanInSlot
@@ -36,8 +37,6 @@ from autonomon.world_model.base import WorldModelBase
 from autonomon.world_model.obstacle import ObstacleWorldModel
 from autonomon.world_model.occupancy import OccupancyWorldModel
 from autonomon.world_model.target import TargetWorldModel
-
-__version__ = "0.5.0"
 
 __all__ = [
     # Layer base classes
