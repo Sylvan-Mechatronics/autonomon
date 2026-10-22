@@ -33,7 +33,8 @@ import logging
 import os
 import sys
 import uuid
-from typing import Any, Callable, Union
+from collections.abc import Callable
+from typing import Any
 
 import httpx
 
@@ -54,7 +55,7 @@ _REQUEST_TIMEOUT_S = 5.0
 _DEFAULT_ENV_FILE = "/etc/autonomon/autonomon.env"
 
 # An auth value is either a bearer-token string or a prepared httpx.Auth flow.
-AuthValue = Union[str, httpx.Auth]
+AuthValue = str | httpx.Auth
 
 # Factory type for the device HTTP client, so tests can inject a mock.
 ClientFactory = Callable[[str, AuthValue], httpx.AsyncClient]

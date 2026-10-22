@@ -323,7 +323,7 @@ class OpenCvHogDetector:
             scale=self._scale,
         )
         detections: list[Detection] = []
-        for (x, y, w, h), weight in zip(rects, np.asarray(weights).reshape(-1)):
+        for (x, y, w, h), weight in zip(rects, np.asarray(weights).reshape(-1), strict=False):
             conf = 1.0 / (1.0 + float(np.exp(-float(weight) * self._confidence_scale)))
             detections.append(
                 Detection(

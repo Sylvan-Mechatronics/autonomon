@@ -44,7 +44,7 @@ class _StubWorldModel(WorldModelBase):
                 self.received.append(msg)
                 state = WorldStateUpdate(timestamp="t", device_id="test", state={"raw": str(msg)})
                 await queue_out.put(state)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 pass
 
     async def stop(self) -> None:
@@ -63,7 +63,7 @@ class _StubPlanner(PlannerBase):
                 self.received.append(msg)
                 plan = ActionPlan(timestamp="t", device_id="test", plan_id="p1", actions=[])
                 await queue_out.put(plan)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 pass
 
     async def stop(self) -> None:
@@ -80,7 +80,7 @@ class _StubAction(ActionBase):
             try:
                 msg = await asyncio.wait_for(queue_in.get(), timeout=0.05)
                 self.received.append(msg)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 pass
 
     async def stop(self) -> None:

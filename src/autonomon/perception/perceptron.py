@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, NamedTuple
 
 import httpx
@@ -212,13 +212,13 @@ class Perceptron(PerceptionBase):
             resp.raise_for_status()
             body = resp.json()
             event = PerceptionEvent(
-                timestamp=body.get("timestamp") or datetime.now(timezone.utc).isoformat(),
+                timestamp=body.get("timestamp") or datetime.now(UTC).isoformat(),
                 device_id=self._device_id,
                 sensor_type=self._sensor_type,
                 data=self._interpreter(body),
             )
             await queue_out.put(event)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("%s poll timed out after %.1f s", self._sensor_type, self._timeout_s)
         except httpx.RequestError as exc:
             logger.warning("%s poll request error: %s", self._sensor_type, exc)
@@ -232,7 +232,7 @@ class Perceptron(PerceptionBase):
     async def _interruptible_sleep(self, seconds: float) -> None:
         try:
             await asyncio.wait_for(self._stop.wait(), timeout=seconds)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
 
     async def stop(self) -> None:

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from autonomon.messages import PerceptionEvent, WorldStateUpdate
@@ -107,7 +107,7 @@ class TargetWorldModel(WorldModelBase):
         while not self._stop.is_set():
             try:
                 event = await asyncio.wait_for(queue_in.get(), timeout=_QUEUE_GET_TIMEOUT_S)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 event = None
             now = loop.time()
             if event is not None:
@@ -192,7 +192,7 @@ class TargetWorldModel(WorldModelBase):
         self._last_emitted = state
         await queue_out.put(
             WorldStateUpdate(
-                timestamp=datetime.now(timezone.utc).isoformat(),
+                timestamp=datetime.now(UTC).isoformat(),
                 device_id=self._device_id,
                 state=dict(state),
                 delta=delta,

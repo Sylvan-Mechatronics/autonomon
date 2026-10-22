@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -159,7 +159,7 @@ class VehicleAction(ActionBase):
         while not self._stop.is_set():
             try:
                 plan = await asyncio.wait_for(queue_in.get(), timeout=_QUEUE_GET_TIMEOUT_S)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 await self._renew_if_due(loop.time())
                 continue
             self._last_plan = plan
@@ -240,7 +240,7 @@ class VehicleAction(ActionBase):
                 resp.raise_for_status()
                 data = resp.json()
                 return self._result(plan_id, action, success=True, data=data), False
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 last_error = "request timed out"
             except httpx.HTTPStatusError as exc:
                 status = exc.response.status_code
@@ -297,7 +297,7 @@ class VehicleAction(ActionBase):
         if not success:
             logger.warning("action %s failed: %s", action.get("method"), error)
         return ActionResult(
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             device_id=self._device_id,
             plan_id=plan_id,
             action=action,

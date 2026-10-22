@@ -21,7 +21,7 @@ import os
 import sys
 import sysconfig
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -71,7 +71,7 @@ def build_catalog() -> dict[str, Any]:
         "routines": list(routines) if isinstance(routines, (list, tuple)) else [],
         "params_schema": dict(params_schema) if isinstance(params_schema, Mapping) else {},
         "autonomon_bin": _autonomon_bin(),
-        "published_at": datetime.now(timezone.utc).isoformat(),
+        "published_at": datetime.now(UTC).isoformat(),
     }
 
 

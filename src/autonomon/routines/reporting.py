@@ -15,7 +15,7 @@ its status sink is unavailable.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import quote
 
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 def utcnow_iso() -> str:
     """Return the current UTC time as an ISO 8601 string."""
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 class StatusReporter:
