@@ -33,8 +33,9 @@
 #   NOMON_PI_HOST          SSH target — "user@host" or plain hostname.
 #   NOMON_SSH_KEY          Path to SSH private key (optional).
 #   NOMON_SUDO_PASS        Optional sudo password for non-interactive sudo.
+#   NOMON_HOME             nomon root folder on the Pi (default ~/perceptua-nomon).
 #   NOMON_REMOTE_DIR       Absolute path to the autonomon repo on the Pi.
-#                          Defaults to ${HOME}/perceptua-nomon/autonomon.
+#                          Defaults to ${NOMON_HOME}/autonomon.
 #   NOMON_ROUTINE_CATALOG_PATH
 #                          Absolute path of the routine catalogue this script
 #                          publishes for nomothetic to read. Default (shared with
@@ -105,7 +106,7 @@ if [[ -f "${ENV_FILE}" ]]; then
         val="${val#\"}" ; val="${val%\"}"
         val="${val#\'}" ; val="${val%\'}"
         case "${key}" in
-            NOMON_PI_HOST|NOMON_SSH_KEY|NOMON_REMOTE_DIR|NOMON_ROUTINE_CATALOG_PATH|NOMON_SUDO_PASS|NOMON_VISION_DETECTOR|NOMON_VISION_MODEL_PATH|NOMON_VISION_MODEL_CONFIG|NOMON_LOG_LEVEL)
+            NOMON_PI_HOST|NOMON_SSH_KEY|NOMON_HOME|NOMON_REMOTE_DIR|NOMON_ROUTINE_CATALOG_PATH|NOMON_SUDO_PASS|NOMON_VISION_DETECTOR|NOMON_VISION_MODEL_PATH|NOMON_VISION_MODEL_CONFIG|NOMON_LOG_LEVEL)
                 export "${key}=${val}" ;;
         esac
     done < "${ENV_FILE}"
@@ -170,7 +171,11 @@ fi
 # SSH can't silently drop empty strings and shift subsequent args.
 _VERSION_QUOTED="$(printf '%q' "${VERSION}")"
 _DEPLOY_LOCAL_QUOTED="$(printf '%q' "${DEPLOY_LOCAL}")"
-_REMOTE_DIR_QUOTED="$(printf '%q' "${NOMON_REMOTE_DIR:-}")"
+# Deploy target on the Pi: NOMON_REMOTE_DIR, else <NOMON_HOME>/autonomon. Kept as
+# a literal "~/..." here so it resolves against the Pi user's home, not ours.
+NOMON_HOME="${NOMON_HOME:-~/perceptua-nomon}"
+DEPLOY_REMOTE_DIR="${NOMON_REMOTE_DIR:-${NOMON_HOME%/}/autonomon}"
+_REMOTE_DIR_QUOTED="$(printf '%q' "${DEPLOY_REMOTE_DIR}")"
 
 if [[ -n "${PI_HOST}" ]]; then
     SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=15)
@@ -189,15 +194,14 @@ else
     export NOMON_LOG_LEVEL="${NOMON_LOG_LEVEL:-}"
     export NOMON_DEPLOY_VERSION="${VERSION}"
     export NOMON_DEPLOY_LOCAL="${DEPLOY_LOCAL}"
-    export NOMON_DEPLOY_REMOTE_DIR="${NOMON_REMOTE_DIR:-}"
+    export NOMON_DEPLOY_REMOTE_DIR="${DEPLOY_REMOTE_DIR}"
     RUN_CMD=(bash -ls)
 fi
 
 # ── Local mode: rsync source tree to Pi ───────────────────────────────────────
 
 if [[ "${DEPLOY_LOCAL}" == true && -n "${PI_HOST}" ]]; then
-    _remote_dir="${NOMON_REMOTE_DIR:-}"
-    _rsync_dest="${PI_HOST}:${_remote_dir:-~/perceptua-nomon/autonomon/}"
+    _rsync_dest="${PI_HOST}:${DEPLOY_REMOTE_DIR%/}/"
     RSYNC_OPTS=(--archive --compress --delete
         --exclude='.git/'
         --exclude='__pycache__/'
@@ -211,7 +215,7 @@ if [[ "${DEPLOY_LOCAL}" == true && -n "${PI_HOST}" ]]; then
     else
         RSYNC_OPTS+=(-e "ssh -o StrictHostKeyChecking=accept-new")
     fi
-    _remote_dir_for_ssh="${_remote_dir:-~/perceptua-nomon/autonomon}"
+    _remote_dir_for_ssh="${DEPLOY_REMOTE_DIR}"
     echo "==> Ensuring remote deploy directory exists: ${_remote_dir_for_ssh}"
     ssh "${SSH_OPTS[@]}" "${PI_HOST}" "bash -s" -- "${_remote_dir_for_ssh}" <<'EO_MKREMOTE'
 set -euo pipefail
@@ -247,7 +251,9 @@ fi
 
 readonly REQUESTED_VERSION="${NOMON_DEPLOY_VERSION:-}"
 readonly DEPLOY_LOCAL="${NOMON_DEPLOY_LOCAL:-false}"
-readonly REMOTE_DIR="${NOMON_DEPLOY_REMOTE_DIR:-${HOME}/perceptua-nomon/autonomon}"
+_remote_dir="${NOMON_DEPLOY_REMOTE_DIR:-~/perceptua-nomon/autonomon}"
+[[ "${_remote_dir}" == "~/"* ]] && _remote_dir="${HOME}/${_remote_dir#\~/}"
+readonly REMOTE_DIR="${_remote_dir}"
 readonly CATALOG_PATH="${NOMON_ROUTINE_CATALOG_PATH:-/var/lib/nomon/routine_catalog.json}"
 readonly SKIP_TESTS="${NOMON_SKIP_TESTS:-false}"
 
