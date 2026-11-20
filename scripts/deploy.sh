@@ -33,7 +33,7 @@
 #   NOMON_PI_HOST          SSH target — "user@host" or plain hostname.
 #   NOMON_SSH_KEY          Path to SSH private key (optional).
 #   NOMON_SUDO_PASS        Optional sudo password for non-interactive sudo.
-#   NOMON_HOME             nomon root folder on the Pi (default ~/perceptua-nomon).
+#   NOMON_HOME             nomon root folder on the Pi (default ~/sylvan-mechatronics).
 #   NOMON_REMOTE_DIR       Absolute path to the autonomon repo on the Pi.
 #                          Defaults to ${NOMON_HOME}/autonomon.
 #   NOMON_ROUTINE_CATALOG_PATH
@@ -173,7 +173,7 @@ _VERSION_QUOTED="$(printf '%q' "${VERSION}")"
 _DEPLOY_LOCAL_QUOTED="$(printf '%q' "${DEPLOY_LOCAL}")"
 # Deploy target on the Pi: NOMON_REMOTE_DIR, else <NOMON_HOME>/autonomon. Kept as
 # a literal "~/..." here so it resolves against the Pi user's home, not ours.
-NOMON_HOME="${NOMON_HOME:-~/perceptua-nomon}"
+NOMON_HOME="${NOMON_HOME:-~/sylvan-mechatronics}"
 DEPLOY_REMOTE_DIR="${NOMON_REMOTE_DIR:-${NOMON_HOME%/}/autonomon}"
 _REMOTE_DIR_QUOTED="$(printf '%q' "${DEPLOY_REMOTE_DIR}")"
 
@@ -251,7 +251,7 @@ fi
 
 readonly REQUESTED_VERSION="${NOMON_DEPLOY_VERSION:-}"
 readonly DEPLOY_LOCAL="${NOMON_DEPLOY_LOCAL:-false}"
-_remote_dir="${NOMON_DEPLOY_REMOTE_DIR:-~/perceptua-nomon/autonomon}"
+_remote_dir="${NOMON_DEPLOY_REMOTE_DIR:-~/sylvan-mechatronics/autonomon}"
 [[ "${_remote_dir}" == "~/"* ]] && _remote_dir="${HOME}/${_remote_dir#\~/}"
 readonly REMOTE_DIR="${_remote_dir}"
 readonly CATALOG_PATH="${NOMON_ROUTINE_CATALOG_PATH:-/var/lib/nomon/routine_catalog.json}"
