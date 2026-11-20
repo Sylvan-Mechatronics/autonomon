@@ -291,6 +291,9 @@ else
     git clone --quiet "${_github_repo}" "${_tmp_clone}/autonomon"
 
     # Backup existing repo and move fresh clone into place
+    # On a fresh Pi the parent (NOMON_HOME) doesn't exist yet, and mv won't
+    # create it.
+    mkdir -p "$(dirname "${REMOTE_DIR}")"
     if [[ -d "${REMOTE_DIR}" ]]; then
         mv "${REMOTE_DIR}" "${REMOTE_DIR}.backup.$$"
     fi
